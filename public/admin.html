@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>伪EVM服务管理后台</title>
+  <style>
+    body { font-family: monospace; background: #fff; color: #111; }
+    input, select { font-size:14px; }
+    .box { margin: 16px 0; }
+    .flex { display: flex; gap: 8px; align-items: center;}
+  </style>
+</head>
+<body>
+  <h3>添加/修改余额</h3>
+  <div class="box">
+    <div class="flex">
+      <input id="address" placeholder="钱包地址">
+      <select id="coinType">
+        <option value="main">主币</option>
+        <option value="token">代币</option>
+      </select>
+      <select id="tokenSelect" style="display:none;">
+        <option value="">--选择代币--</option>
+        <option value="0xdac17f958d2ee523a2206206994597c13d831ec7">USDT</option>
+        <option value="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48">USDC</option>
+        <option value="0x4fabb145d64652a948d72533023f6e7a623c7c53">BUSD</option>
+        <option value="0x2260fac5e5542a773aa44fbcfedf7c193bc2c599">WBTC</option>
+        <option value="0xae7ab96520de3a18e5e111b5eaab095312d7fe84">stETH</option>
+        <option value="">其它(自定义)</option>
+      </select>
+      <input id="coin" placeholder="币种/合约地址" style="width:220px;">
+      <input id="amount" placeholder="余额">
+      <button onclick="addBalance()">提交</button>
+    </div>
+  </div>
+
+  <h3>添加假币种（合约）</h3>
+  <div class="box flex">
+    <input id="tokenAddr" placeholder="合约地址">
+    <input id="tokenSymbol" placeholder="符号">
+    <input id="tokenName" placeholder="名称">
+    <input id="tokenDecimals" placeholder="小数">
+    <button onclick="addToken()">提交</button>
+  </div>
+
+  <h3>当前数据</h3>
+  <pre id="data"></pre>
+
+<script>
+const TOKEN_MAP = {
+  USDT: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+  USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+  BUSD: '0x4fabb145d64652a948d72533023f6e7a623c7c53',
+  WBTC: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+  stETH: '0xae7ab96520de3a18e5e111b5eaab095312d7fe84'
+};
+
+function $(id) { return document.getElementById(id); }
+
+$('coinType').onchange = function() {
+  if (this.value === 'token') {
+    $('tokenSelect').style.display = '';
+    $('coin').placeholder = '合约地址/自定义代币';
+  } else {
+    $('tokenSelect').style.display = 'none';
+    $('coin').placeholder = '主币简称（如ETH）';
+  }
+  $('coin').value = '';
+};
+
+$('tokenSelect').onchange = function() {
+  if (this.value) {
+    $('coin').value = this.value;
+  } else {
+    $('coin').value = '';
+    $('coin').focus();
+  }
+};
+
+function addBalance() {
+  const address = $('address').value.trim().toLowerCase();
+  let coin = $('coin').value.trim().toLowerCase();
+  const amount = $('amount').value.trim();
+  if (!address || !coin || !amount) return alert('请填写完整信息');
+  fetch('/api/set', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ address, symbol: coin, amount })
+  }).then(()=>{load();});
+}
+
+function addToken() {
+  const contract = $('tokenAddr').value.trim().toLowerCase();
+  const symbol = $('tokenSymbol').value.trim().toUpperCase();
+  const name = $('tokenName').value.trim();
+  const decimals = parseInt($('tokenDecimals').value.trim(), 10);
+  if (!contract || !symbol || !name || isNaN(decimals)) return alert('请填写完整信息');
+  fetch('/api/settoken', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ contract, symbol, name, decimals })
+  }).then(()=>{load();});
+}
+
+function load() {
+  fetch('/api/list').then(r=>r.json()).then(res=>{
+    $('data').innerText = JSON.stringify(res, null, 2);
+  });
+}
+load();
+</script>
+</body>
+</html>
